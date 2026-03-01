@@ -1,0 +1,35 @@
+{
+  "name": "ssh-mcp-server",
+  "version": "1.0.0",
+  "description": "SSH MCP Server - Context-efficient SSH multi-client proxy for Model Context Protocol",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "ssh-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "inspect": "npx @modelcontextprotocol/inspector tsx src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "ssh",
+    "model-context-protocol",
+    "remote-execution"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "ssh-config": "^5.1.0",
+    "ssh2": "^1.17.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "@types/ssh2": "^1.15.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

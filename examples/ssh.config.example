@@ -1,0 +1,52 @@
+# SSH MCP Server - 项目级 SSH 配置示例
+# ==========================================
+# 将此文件复制为 ssh.config 到你的项目根目录，然后修改为实际值。
+# Copy this file as ssh.config to your project root and modify with actual values.
+#
+# 项目级配置会覆盖用户级配置 (~/.config/mcp-ssh/config) 中同名的 Host。
+# Project-level settings override user-level settings for hosts with the same name.
+#
+# 安全注解格式 / Security annotations:
+#   # mcp-ssh:denylist = cmd1,cmd2       - 屏蔽这些命令 / Block these commands
+#   # mcp-ssh:allowlist = cmd1,cmd2      - 仅允许这些命令 / Only allow these commands
+#   # mcp-ssh:maxTimeoutMs = 30000       - 最大超时 / Max timeout
+#   # mcp-ssh:maxOutputChars = 5000      - 最大输出 / Max output chars
+
+# ──── 生产服务器 (严格白名单模式) ────
+Host prod-web
+  HostName 10.0.1.100
+  User deploy
+  Port 22
+  IdentityFile ~/.ssh/deploy_ed25519
+  StrictHostKeyChecking yes
+  ConnectTimeout 10
+  ServerAliveInterval 60
+  # mcp-ssh:allowlist = ls,cat,grep,find,ps,top,df,du,free,uptime,systemctl status,journalctl
+  # mcp-ssh:maxTimeoutMs = 30000
+  # mcp-ssh:maxOutputChars = 8000
+
+# ──── 测试/开发服务器 (黑名单模式) ────
+Host dev-server
+  HostName 192.168.1.100
+  User developer
+  Port 22
+  IdentityFile ~/.ssh/id_ed25519
+  # mcp-ssh:denylist = rm -rf /,mkfs,dd if=,shutdown,reboot,passwd,chmod -R 777
+
+# ──── 数据库服务器 (仅查询) ────
+Host db-readonly
+  HostName db.internal.example.com
+  User dbadmin
+  Port 22
+  IdentityFile ~/.ssh/db_key
+  # mcp-ssh:allowlist = psql -c,mysql -e,mongosh --eval,redis-cli
+  # mcp-ssh:maxTimeoutMs = 15000
+
+# ──── 通过跳板机连接 ────
+Host internal-server
+  HostName 10.10.0.50
+  User admin
+  Port 22
+  ProxyJump bastion-host
+  IdentityFile ~/.ssh/internal_key
+  # mcp-ssh:denylist = rm -rf,mkfs,dd,shutdown,reboot

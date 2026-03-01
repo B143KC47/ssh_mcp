@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "ssh": {
+      "command": "node",
+      "args": [
+        "/REPLACE_WITH_ABSOLUTE_PATH/ssh-mcp-server/dist/index.js",
+        "--project-root",
+        "${workspaceFolder}"
+      ]
+    }
+  }
+}

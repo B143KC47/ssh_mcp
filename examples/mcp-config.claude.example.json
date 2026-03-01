@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ssh": {
+      "command": "node",
+      "args": [
+        "/REPLACE_WITH_ABSOLUTE_PATH/ssh-mcp-server/dist/index.js",
+        "--project-root",
+        "/REPLACE_WITH_YOUR_PROJECT_PATH"
+      ],
+      "env": {}
+    }
+  }
+}
