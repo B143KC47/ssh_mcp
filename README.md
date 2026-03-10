@@ -1,28 +1,90 @@
 # SSH MCP Server
 
-A **Model Context Protocol (MCP)** server that provides SSH remote command execution capabilities. It enables AI agents to discover, connect to, and execute commands on remote SSH hosts through a standardized MCP interface.
+[![GitHub stars](https://img.shields.io/github/stars/B143KC47/ssh_mcp?style=flat-square)](https://github.com/B143KC47/ssh_mcp/stargazers)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![MCP](https://img.shields.io/badge/MCP-compatible-6e56cf?style=flat-square)](https://modelcontextprotocol.io/)
+[![SSH](https://img.shields.io/badge/SSH-security--first-0f766e?style=flat-square)](https://www.openssh.com/)
 
-## Features
+**English** | [中文](README.zh-CN.md)
 
-- **Dual-scope configuration**: Project-level (`ssh.config`) and user-level (`~/.config/mcp-ssh/config`) SSH configs with automatic merging
-- **Connection pooling**: Reuse SSH connections across multiple commands with automatic idle cleanup
-- **Command security**: Built-in dangerous command blacklist + configurable per-host allow/deny lists
-- **Output management**: Automatic output truncation to prevent LLM context overflow
-- **Sensitive data protection**: Private keys never exposed in tool outputs; passwords via env vars only
-- **Standard SSH config syntax**: Uses OpenSSH config format — `Host`, `HostName`, `User`, `Port`, `IdentityFile`, etc.
+Secure SSH access for MCP clients. `ssh_mcp` lets Claude Desktop, VS Code Copilot, Augment, and other MCP-compatible agents run remote commands through a safety-first SSH proxy with OpenSSH config compatibility, connection pooling, and output guardrails.
 
-## Quick Start
+## Why developers pick this project
 
-### 1. Install
+- **Use the SSH config you already know**: standard OpenSSH fields like `Host`, `HostName`, `User`, `Port`, `IdentityFile`, and `ProxyJump`
+- **Safer than a raw shell bridge**: built-in dangerous command blocking, per-host allowlists/denylists, output caps, and secret redaction
+- **Fast for multi-step agent sessions**: pooled SSH connections reduce reconnect overhead
+- **Works with real MCP workflows**: designed for Claude Desktop, VS Code Copilot, Augment, and any MCP-compatible client
+- **Flexible for teams**: merge project-level and user-level configs so shared hosts stay global while project overrides stay local
+
+## Great fit for
+
+- AI-assisted production troubleshooting
+- Safe observability and read-only operations on remote servers
+- DevOps and platform engineering copilots
+- Internal tooling that needs SSH access without handing an agent unlimited shell freedom
+
+## Quick start
+
+### 1. Install and build
 
 ```bash
 npm install
 npm run build
 ```
 
-### 2. Configure SSH hosts
+### 2. Add the server to your MCP client
 
-Create a project-level config (`ssh.config` in your project root):
+See the ready-to-copy examples in:
+
+- `examples/mcp-config.claude.example.json`
+- `examples/mcp-config.vscode.example.json`
+
+Minimal Claude Desktop / Augment example:
+
+```json
+{
+  "mcpServers": {
+    "ssh": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/ssh-mcp-server/dist/index.js",
+        "--project-root",
+        "/path/to/your/project"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+Minimal VS Code MCP example:
+
+```json
+{
+  "servers": {
+    "ssh": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/ssh-mcp-server/dist/index.js",
+        "--project-root",
+        "${workspaceFolder}"
+      ]
+    }
+  }
+}
+```
+
+### 3. Configure SSH hosts
+
+Copy `examples/ssh.config.example` to `ssh.config` in your project root, or initialize one through the MCP tool:
+
+```text
+Use tool: ssh_init_config with scope="project"
+```
+
+Minimal example:
 
 ```sshconfig
 Host my-server
@@ -33,42 +95,21 @@ Host my-server
   # mcp-ssh:denylist = rm -rf,mkfs,dd,shutdown,reboot
 ```
 
-Or initialize via the MCP tool:
+### 4. Try a few prompts in your MCP client
 
-```
-Use tool: ssh_init_config with scope="project"
-```
+- "List all configured SSH hosts."
+- "Test the SSH connection to `my-server`."
+- "Run `uptime && df -h` on `my-server`."
+- "Show me the merged SSH config for `my-server`."
 
-### 3. Add to MCP client
+## Core features
 
-#### Claude Desktop / Augment
-
-Add to your MCP settings (`claude_desktop_config.json` or equivalent):
-
-```json
-{
-  "mcpServers": {
-    "ssh": {
-      "command": "node",
-      "args": ["path/to/ssh-mcp-server/dist/index.js", "--project-root", "/path/to/your/project"],
-      "env": {}
-    }
-  }
-}
-```
-
-#### Using npx (development)
-
-```json
-{
-  "mcpServers": {
-    "ssh": {
-      "command": "npx",
-      "args": ["tsx", "path/to/ssh-mcp-server/src/index.ts", "--project-root", "."]
-    }
-  }
-}
-```
+- **Dual-scope configuration**: project-level (`ssh.config`) + user-level (`~/.config/mcp-ssh/config`) with automatic merging
+- **Connection pooling**: reuse SSH connections across commands with idle cleanup
+- **Per-host security policy**: allowlists, denylists, max timeout, and max output size
+- **Output management**: automatic truncation to protect LLM context windows
+- **Sensitive data protection**: private keys and sensitive environment values are sanitized in output
+- **OpenSSH compatibility**: keep using your normal host aliases and SSH habits
 
 ## Configuration
 
@@ -76,57 +117,75 @@ Add to your MCP settings (`claude_desktop_config.json` or equivalent):
 
 | Scope | Path | Purpose |
 |-------|------|---------|
-| Project | `<project-root>/ssh.config` | Hosts specific to this project |
-| User | `~/.config/mcp-ssh/config` | Shared hosts across all projects |
+| Project | `<project-root>/ssh.config` | Hosts specific to the current project |
+| User | `~/.config/mcp-ssh/config` | Shared hosts across projects |
 
-**Merge rule**: Project-level settings override user-level settings for hosts with the same name.
-
-### SSH config syntax
-
-Standard OpenSSH config syntax is supported:
-
-```sshconfig
-# Project-level ssh.config
-Host prod-db
-  HostName db.prod.example.com
-  User deploy
-  Port 22
-  IdentityFile ~/.ssh/deploy_key
-  ConnectTimeout 10
-  ServerAliveInterval 60
-  # mcp-ssh:denylist = DROP TABLE,rm -rf /,mkfs
-
-Host staging
-  HostName staging.example.com
-  User developer
-  IdentityFile ~/.ssh/id_ed25519
-  # mcp-ssh:allowlist = ls,cat,grep,find,ps,top,df,du,free,uptime
-```
+**Merge rule**: project-level settings override user-level settings for hosts with the same name.
 
 ### Security annotations
 
-Add security policies as comments within Host blocks:
+Add policies as comments inside a `Host` block:
 
 ```sshconfig
 # mcp-ssh:denylist = cmd1,cmd2      # Block these command patterns
-# mcp-ssh:allowlist = cmd1,cmd2     # Only allow these patterns (overrides denylist)
+# mcp-ssh:allowlist = cmd1,cmd2     # Only allow these command patterns
 # mcp-ssh:maxTimeoutMs = 30000      # Max execution timeout for this host
 # mcp-ssh:maxOutputChars = 5000     # Max output characters for this host
 ```
 
-### Authentication
+### Authentication order
 
-The server tries authentication methods in this order:
+1. **Private key** from `IdentityFile`
+2. **SSH agent** via `SSH_AUTH_SOCK` (Unix) or Pageant (Windows)
+3. **Password** via environment variable `SSH_PASSWORD_<HOST>`
 
-1. **Private key** — from `IdentityFile` in SSH config
-2. **SSH Agent** — `SSH_AUTH_SOCK` (Unix) or Pageant (Windows)
-3. **Password** — from environment variable `SSH_PASSWORD_<HOST>` (uppercase, special chars → `_`)
+Example: for host `my-server`, set `SSH_PASSWORD_MY_SERVER=secret`.
 
-Example: For host `my-server`, set `SSH_PASSWORD_MY_SERVER=secret`.
+## Why this is better than a plain SSH wrapper
 
-## CLI Options
+| Plain remote exec bridge | SSH MCP Server |
+|---|---|
+| Often exposes a full shell with little policy control | Supports per-host allowlists / denylists |
+| Reconnects for every agent step | Reuses pooled connections |
+| Easy to overflow model context with huge outputs | Truncates output automatically |
+| Custom host definitions | Works with familiar OpenSSH config syntax |
+| Secrets may leak into logs | Sanitizes output and hides sensitive values |
 
-```
+## MCP tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `ssh_list_hosts` | List all available SSH hosts | — |
+| `ssh_exec` | Execute a command on a remote host | `host`, `command`, `timeout_ms?` |
+| `ssh_init_config` | Initialize SSH config file | `scope`, `project_root?`, `hosts?` |
+| `ssh_get_config` | Get config for a specific host | `host` |
+| `ssh_test_connection` | Test connectivity to a host | `host` |
+| `ssh_disconnect` | Disconnect one host or all active sessions | `host?` |
+
+## MCP resources
+
+| URI | Description |
+|-----|-------------|
+| `ssh://hosts` | JSON list of all configured SSH hosts |
+
+## Security-first defaults
+
+- Dangerous commands such as `rm -rf /`, `mkfs`, `dd if=`, `shutdown`, and `reboot` are blocked by default
+- Private key material and sensitive env values are redacted from outputs
+- Commands are sanitized before execution
+- Concurrent connection count and idle lifetime are limited
+
+Recommended for production:
+
+1. Prefer `IdentityFile` over password auth
+2. Use `# mcp-ssh:allowlist` for production hosts
+3. Add `ssh.config` to `.gitignore` if it contains sensitive hostnames
+4. Enable `--strict-host-key` in production
+5. Use SSH certificates or pinned `known_hosts` entries when possible
+
+## CLI options
+
+```text
 ssh-mcp-server [options]
 
 --project-root <path>     Project root directory (for project-level ssh.config)
@@ -139,69 +198,10 @@ ssh-mcp-server [options]
 --idle-timeout <ms>       Connection idle timeout in ms (default: 600000)
 ```
 
-## MCP Tools
-
-| Tool | Description | Parameters |
-|------|-------------|------------|
-| `ssh_list_hosts` | List all available SSH hosts | — |
-| `ssh_exec` | Execute a command on a remote host | `host`, `command`, `timeout_ms?` |
-| `ssh_init_config` | Initialize SSH config file | `scope` (project/user), `project_root?`, `hosts?` |
-| `ssh_get_config` | Get config for a specific host | `host` |
-| `ssh_test_connection` | Test connectivity to a host | `host` |
-| `ssh_disconnect` | Disconnect session(s) | `host?` |
-
-## MCP Resources
-
-| URI | Description |
-|-----|-------------|
-| `ssh://hosts` | JSON list of all configured SSH hosts |
-
-## Security
-
-### Built-in protections
-
-- **Command blacklist**: Dangerous commands blocked by default (`rm -rf /`, `mkfs`, `dd if=`, `shutdown`, `reboot`, fork bombs, firewall flush, credential file reads)
-- **Output sanitization**: Private keys and sensitive env vars redacted from output
-- **No credential exposure**: Private key paths shown truncated; passwords never in tool results
-- **Connection limits**: Max concurrent connections (default: 5) with idle timeout
-- **Input sanitization**: Null bytes stripped from commands
-
-### Recommendations
-
-1. Always use `IdentityFile` (key-based auth) over passwords
-2. Use per-host `# mcp-ssh:allowlist` for production servers
-3. Add `ssh.config` to `.gitignore` if it contains sensitive hostnames
-4. Enable `--strict-host-key` in production environments
-5. Use SSH certificates or `known_hosts` pinning for host verification
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│ MCP Client (Claude/Augment/IDE)             │
-│  ↕ JSON-RPC 2.0 over stdio                 │
-├─────────────────────────────────────────────┤
-│ MCP Server Layer                            │
-│  ├─ Tool handlers (ssh_exec, etc.)          │
-│  ├─ Resource handlers (ssh://hosts)         │
-│  └─ Logging notifications                  │
-├─────────────────────────────────────────────┤
-│ Config Layer                                │
-│  ├─ Parser (ssh-config lib)                 │
-│  ├─ Merger (project + user, project wins)   │
-│  └─ Security policies (allowlist/denylist)  │
-├─────────────────────────────────────────────┤
-│ SSH Layer                                   │
-│  ├─ Connection Pool (ssh2 Client)           │
-│  ├─ Command Executor (exec channels)        │
-│  └─ Output truncation & sanitization        │
-└─────────────────────────────────────────────┘
-```
-
 ## Development
 
 ```bash
-# Install deps
+# Install dependencies
 npm install
 
 # Run in dev mode
@@ -210,13 +210,17 @@ npm run dev -- --project-root .
 # Build
 npm run build
 
-# Run built version
+# Run the built server
 npm start -- --project-root .
 
 # Debug with MCP Inspector
 npm run inspect
 ```
 
+## Contributing
+
+Issues and pull requests are welcome. If you want support for more MCP clients, stronger security policies, or better SSH ergonomics, open an issue and share the workflow you want to enable.
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
