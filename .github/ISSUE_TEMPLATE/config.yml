@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security issue
+    url: https://github.com/B143KC47/ssh_mcp/blob/main/SECURITY.md
+    about: Please use the security reporting process instead of a public issue.
+  - name: Documentation and setup guide
+    url: https://github.com/B143KC47/ssh_mcp#readme
+    about: Check the README before opening a setup or usage issue.

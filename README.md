@@ -1,6 +1,7 @@
 # SSH MCP Server
 
 [![GitHub stars](https://img.shields.io/github/stars/B143KC47/ssh_mcp?style=flat-square)](https://github.com/B143KC47/ssh_mcp/stargazers)
+[![CI](https://github.com/B143KC47/ssh_mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/B143KC47/ssh_mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-6e56cf?style=flat-square)](https://modelcontextprotocol.io/)
@@ -9,6 +10,14 @@
 **English** | [中文](README.zh-CN.md)
 
 Secure SSH access for MCP clients. `ssh_mcp` lets Claude Desktop, VS Code Copilot, Augment, and other MCP-compatible agents run remote commands through a safety-first SSH proxy with OpenSSH config compatibility, connection pooling, and output guardrails.
+
+## Project health
+
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Open an issue](https://github.com/B143KC47/ssh_mcp/issues)
+- [View CI runs](https://github.com/B143KC47/ssh_mcp/actions/workflows/ci.yml)
 
 ## Why developers pick this project
 
@@ -220,6 +229,13 @@ npm run inspect
 ## Contributing
 
 Issues and pull requests are welcome. If you want support for more MCP clients, stronger security policies, or better SSH ergonomics, open an issue and share the workflow you want to enable.
+
+For contributor workflow details, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Community
+
+- Please follow the expectations in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- For security issues, use [SECURITY.md](SECURITY.md) instead of filing a public bug report
 
 ## License
 
