@@ -1,204 +1,191 @@
 # SSH MCP Server
 
+[![GitHub stars](https://img.shields.io/github/stars/B143KC47/ssh_mcp?style=flat-square)](https://github.com/B143KC47/ssh_mcp/stargazers)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![MCP](https://img.shields.io/badge/MCP-compatible-6e56cf?style=flat-square)](https://modelcontextprotocol.io/)
+[![SSH](https://img.shields.io/badge/SSH-security--first-0f766e?style=flat-square)](https://www.openssh.com/)
+
 [English](README.md) | **中文**
 
-基于 **模型上下文协议 (MCP)** 的 SSH 远程命令执行服务器。让 AI 智能体能够通过标准化的 MCP 接口发现、连接并在远程 SSH 主机上执行命令。
+一个面向 MCP 客户端的安全 SSH 服务器。`ssh_mcp` 让 Claude Desktop、VS Code Copilot、Augment 以及其他兼容 MCP 的智能体，可以通过一个带安全护栏的 SSH 代理执行远程命令，同时保留 OpenSSH 配置兼容性、连接池复用和输出截断能力。
 
-## ✨ 功能特性
+## 为什么这个项目更容易被真正用起来
 
-- **双层配置系统**：项目级 (`ssh.config`) 和用户级 (`~/.config/mcp-ssh/config`) SSH 配置自动合并
-- **连接池复用**：跨命令复用 SSH 连接，自动清理空闲连接
-- **命令安全**：内置危险命令黑名单 + 可配置的每主机允许/拒绝列表
-- **输出管理**：自动截断输出，防止 LLM 上下文溢出
-- **敏感数据保护**：私钥永不出现在工具输出中；密码仅通过环境变量传递
-- **标准 SSH 配置语法**：使用 OpenSSH 配置格式 — `Host`、`HostName`、`User`、`Port`、`IdentityFile` 等
-- **一键安装向导**：交互式 CLI 引导完成配置
+- **延续你已有的 SSH 使用习惯**：支持标准 OpenSSH 字段，如 `Host`、`HostName`、`User`、`Port`、`IdentityFile`、`ProxyJump`
+- **比“裸奔式远程执行”更安全**：内置危险命令拦截、每主机白名单/黑名单、输出上限、敏感信息脱敏
+- **更适合多轮 AI 操作**：连接池减少重复握手，连续执行更顺滑
+- **适配主流 MCP 使用场景**：面向 Claude Desktop、VS Code Copilot、Augment 和其他兼容 MCP 的客户端
+- **适合团队协作**：项目级与用户级配置自动合并，共享主机和项目覆盖都能兼顾
 
-## 🚀 快速开始
+## 适用场景
 
-### 方式一：一键安装（推荐）
+- AI 辅助的线上排障
+- 远程主机的观测、巡检、只读操作
+- DevOps / 平台工程智能助手
+- 需要 SSH 能力，但又不希望把无限制 Shell 权限直接交给智能体的内部工具
 
-```bash
-# 克隆并安装
-git clone <repo-url> ssh-mcp-server
-cd ssh-mcp-server
-npm install && npm run build
+## 快速开始
 
-# 运行交互式安装向导
-npm run setup
-```
-
-安装向导会自动：
-- 检测你的操作系统和 SSH 环境
-- 引导你配置 SSH 主机
-- 生成 MCP 客户端配置（Claude Desktop / VS Code Copilot）
-- 测试 SSH 连接可用性
-
-### 方式二：手动安装
+### 1. 安装并构建
 
 ```bash
 npm install
 npm run build
 ```
 
-然后手动创建配置文件（见下方配置章节）。
+### 2. 添加到你的 MCP 客户端
 
-### 方式三：直接使用 npx（无需安装）
+仓库里已经附带可直接复制的示例配置：
 
-```bash
-npx tsx src/index.ts --project-root /你的项目路径
-```
+- `examples/mcp-config.claude.example.json`
+- `examples/mcp-config.vscode.example.json`
 
-## 📦 添加到 MCP 客户端
-
-### 自动生成配置
-
-运行以下命令自动生成 MCP 客户端配置：
-
-```bash
-npm run setup:mcp
-```
-
-### 手动配置
-
-#### Claude Desktop
-
-编辑 `claude_desktop_config.json`：
+Claude Desktop / Augment 最小示例：
 
 ```json
 {
   "mcpServers": {
     "ssh": {
       "command": "node",
-      "args": ["/path/to/ssh-mcp-server/dist/index.js", "--project-root", "/你的项目路径"],
+      "args": [
+        "/absolute/path/to/ssh-mcp-server/dist/index.js",
+        "--project-root",
+        "/path/to/your/project"
+      ],
       "env": {}
     }
   }
 }
 ```
 
-#### VS Code Copilot
-
-在 `.vscode/mcp.json` 中添加：
+VS Code MCP 最小示例：
 
 ```json
 {
   "servers": {
     "ssh": {
       "command": "node",
-      "args": ["/path/to/ssh-mcp-server/dist/index.js", "--project-root", "${workspaceFolder}"]
+      "args": [
+        "/absolute/path/to/ssh-mcp-server/dist/index.js",
+        "--project-root",
+        "${workspaceFolder}"
+      ]
     }
   }
 }
 ```
 
-#### Augment
+### 3. 配置 SSH 主机
 
-在 MCP 设置中添加：
+把 `examples/ssh.config.example` 复制成项目根目录下的 `ssh.config`，或者直接通过 MCP 工具初始化：
 
-```json
-{
-  "mcpServers": {
-    "ssh": {
-      "command": "node",
-      "args": ["/path/to/ssh-mcp-server/dist/index.js", "--project-root", "."]
-    }
-  }
-}
+```text
+Use tool: ssh_init_config with scope="project"
 ```
 
-## ⚙️ 配置
+最小示例：
+
+```sshconfig
+Host my-server
+  HostName 192.168.1.100
+  User ubuntu
+  Port 22
+  IdentityFile ~/.ssh/id_rsa
+  # mcp-ssh:denylist = rm -rf,mkfs,dd,shutdown,reboot
+```
+
+### 4. 在 MCP 客户端里试试这些指令
+
+- “列出所有可用 SSH 主机。”
+- “测试 `my-server` 的 SSH 连接。”
+- “在 `my-server` 上执行 `uptime && df -h`。”
+- “显示 `my-server` 的合并后 SSH 配置。”
+
+## 核心能力
+
+- **双层配置系统**：项目级 (`ssh.config`) + 用户级 (`~/.config/mcp-ssh/config`) 自动合并
+- **连接池复用**：跨命令复用 SSH 连接，自动清理空闲连接
+- **每主机安全策略**：支持 allowlist、denylist、超时上限、输出上限
+- **输出管理**：自动截断，防止 LLM 上下文被大输出撑爆
+- **敏感信息保护**：私钥和敏感环境变量在输出中会被脱敏
+- **OpenSSH 兼容**：可以直接延续现有主机别名和 SSH 使用方式
+
+## 配置说明
 
 ### 配置文件位置
 
 | 层级 | 路径 | 用途 |
 |------|------|------|
-| 项目级 | `<项目根目录>/ssh.config` | 仅当前项目使用的主机 |
-| 用户级 | `~/.config/mcp-ssh/config` | 跨项目共享的主机 |
+| 项目级 | `<项目根目录>/ssh.config` | 当前项目专用主机 |
+| 用户级 | `~/.config/mcp-ssh/config` | 跨项目共享主机 |
 
 **合并规则**：项目级配置中同名 Host 的设置会覆盖用户级配置。
 
-### SSH 配置语法
-
-使用标准 OpenSSH 配置语法：
-
-```sshconfig
-# 项目级配置 ssh.config
-Host prod-db
-  HostName db.prod.example.com       # 实际主机名或 IP
-  User deploy                        # 登录用户名
-  Port 22                            # SSH 端口
-  IdentityFile ~/.ssh/deploy_key     # 私钥文件路径
-  ConnectTimeout 10                  # 连接超时(秒)
-  ServerAliveInterval 60             # 心跳检测间隔(秒)
-  # mcp-ssh:denylist = DROP TABLE,rm -rf /,mkfs   # 禁止的命令模式
-
-Host staging
-  HostName staging.example.com
-  User developer
-  IdentityFile ~/.ssh/id_ed25519
-  # mcp-ssh:allowlist = ls,cat,grep,find,ps,top,df,du,free,uptime   # 仅允许这些命令
-```
-
 ### 安全注解
 
-在 Host 块中添加特殊注释来配置安全策略：
+在 `Host` 块里写注释即可声明策略：
 
 ```sshconfig
-# mcp-ssh:denylist = cmd1,cmd2         # 黑名单：阻止这些命令模式
-# mcp-ssh:allowlist = cmd1,cmd2        # 白名单：仅允许这些命令（覆盖黑名单）
-# mcp-ssh:maxTimeoutMs = 30000         # 该主机的最大执行超时(毫秒)
-# mcp-ssh:maxOutputChars = 5000        # 该主机的最大输出字符数
+# mcp-ssh:denylist = cmd1,cmd2      # 黑名单：阻止这些命令模式
+# mcp-ssh:allowlist = cmd1,cmd2     # 白名单：仅允许这些命令模式
+# mcp-ssh:maxTimeoutMs = 30000      # 该主机最大执行超时
+# mcp-ssh:maxOutputChars = 5000     # 该主机最大输出字符数
 ```
 
-### 认证方式
+### 认证顺序
 
-服务器按以下顺序尝试认证：
+1. **私钥认证**：来自 `IdentityFile`
+2. **SSH Agent**：通过 `SSH_AUTH_SOCK`（Unix）或 Pageant（Windows）
+3. **密码认证**：通过环境变量 `SSH_PASSWORD_<HOST>`
 
-1. **密钥认证** — 使用 SSH 配置中 `IdentityFile` 指定的私钥
-2. **SSH Agent** — 通过 `SSH_AUTH_SOCK` (Linux/macOS) 或 Pageant (Windows)
-3. **密码认证** — 通过环境变量 `SSH_PASSWORD_<主机名>` (大写，特殊字符替换为 `_`)
+示例：主机 `my-server` 的密码可设置为 `SSH_PASSWORD_MY_SERVER=secret`。
 
-示例：主机 `my-server` 的密码设置为环境变量 `SSH_PASSWORD_MY_SERVER=你的密码`。
+## 为什么它比普通 SSH 包装器更值得用
 
-## 🛠 MCP 工具
+| 普通远程执行桥 | SSH MCP Server |
+|---|---|
+| 往往直接暴露完整 Shell | 支持每主机 allowlist / denylist |
+| 每一步都重新连接 | 复用连接池，减少重复握手 |
+| 大输出容易把模型上下文塞满 | 自动截断输出 |
+| 往往要重新定义主机配置 | 直接使用熟悉的 OpenSSH 语法 |
+| 日志里容易混入敏感数据 | 自动脱敏并隐藏敏感值 |
+
+## MCP 工具
 
 | 工具 | 描述 | 参数 |
 |------|------|------|
 | `ssh_list_hosts` | 列出所有可用 SSH 主机 | — |
 | `ssh_exec` | 在远程主机上执行命令 | `host`, `command`, `timeout_ms?` |
-| `ssh_init_config` | 初始化 SSH 配置文件 | `scope` (project/user), `project_root?`, `hosts?` |
-| `ssh_get_config` | 获取特定主机的配置 | `host` |
+| `ssh_init_config` | 初始化 SSH 配置文件 | `scope`, `project_root?`, `hosts?` |
+| `ssh_get_config` | 获取指定主机的配置 | `host` |
 | `ssh_test_connection` | 测试主机连接 | `host` |
-| `ssh_disconnect` | 断开 SSH 会话 | `host?` |
+| `ssh_disconnect` | 断开指定主机或全部活动连接 | `host?` |
 
-## 📂 MCP 资源
+## MCP 资源
 
 | URI | 描述 |
 |-----|------|
 | `ssh://hosts` | 所有已配置 SSH 主机的 JSON 列表 |
 
-## 🔐 安全
+## 安全默认值
 
-### 内置保护
+- 默认阻止 `rm -rf /`、`mkfs`、`dd if=`、`shutdown`、`reboot` 等危险命令
+- 私钥内容和敏感环境变量会在输出中被脱敏
+- 命令在执行前会做基础清理
+- 并发连接数量和空闲连接寿命都有上限
 
-- **命令黑名单**：默认阻止危险命令（`rm -rf /`、`mkfs`、`dd if=`、`shutdown`、`reboot`、fork 炸弹、防火墙清空、凭证文件读取）
-- **输出消毒**：自动脱敏私钥和敏感环境变量
-- **凭证保护**：私钥路径仅显示尾部；密码绝不出现在工具返回值中
-- **连接限制**：最大并发连接数（默认 5）+ 空闲超时自动断开
-- **输入清理**：自动去除命令中的 null 字节
+生产环境建议：
 
-### 安全建议
+1. 优先使用 `IdentityFile`，少用密码认证
+2. 生产主机优先使用 `# mcp-ssh:allowlist`
+3. 如果 `ssh.config` 包含敏感主机名，请加入 `.gitignore`
+4. 生产环境建议启用 `--strict-host-key`
+5. 尽量使用 SSH 证书或固定 `known_hosts`
 
-1. 优先使用 `IdentityFile`（密钥认证）而非密码
-2. 生产服务器建议使用 `# mcp-ssh:allowlist` 白名单模式
-3. 若 `ssh.config` 包含敏感主机名，请将其加入 `.gitignore`
-4. 生产环境建议启用 `--strict-host-key` 严格主机密钥校验
-5. 使用 SSH 证书或 `known_hosts` 固定来验证主机身份
+## CLI 选项
 
-## 📋 CLI 选项
-
-```
+```text
 ssh-mcp-server [选项]
 
 --project-root <路径>       项目根目录（用于项目级 ssh.config）
@@ -211,31 +198,7 @@ ssh-mcp-server [选项]
 --idle-timeout <毫秒>       连接空闲超时（默认: 600000）
 ```
 
-## 🏗 架构
-
-```
-┌─────────────────────────────────────────────┐
-│ MCP 客户端 (Claude/Augment/IDE)             │
-│  ↕ JSON-RPC 2.0 over stdio                 │
-├─────────────────────────────────────────────┤
-│ MCP 服务层                                  │
-│  ├─ 工具处理器 (ssh_exec 等)                │
-│  ├─ 资源处理器 (ssh://hosts)                │
-│  └─ 日志通知                               │
-├─────────────────────────────────────────────┤
-│ 配置层                                      │
-│  ├─ 解析器 (ssh-config 库)                  │
-│  ├─ 合并器 (项目级 + 用户级，项目级优先)     │
-│  └─ 安全策略 (allowlist / denylist)         │
-├─────────────────────────────────────────────┤
-│ SSH 层                                      │
-│  ├─ 连接池 (ssh2 Client)                    │
-│  ├─ 命令执行器 (exec 通道)                  │
-│  └─ 输出截断 & 消毒                        │
-└─────────────────────────────────────────────┘
-```
-
-## 🧑‍💻 开发
+## 开发
 
 ```bash
 # 安装依赖
@@ -252,34 +215,12 @@ npm start -- --project-root .
 
 # 使用 MCP Inspector 调试
 npm run inspect
-
-# 运行安装向导
-npm run setup
-
-# 自动诊断
-npm run doctor
 ```
 
-## 🔍 故障排除
+## 贡献
 
-### 常见问题
+欢迎提 Issue 和 PR。如果你希望支持更多 MCP 客户端、更严格的安全策略，或者更顺手的 SSH 工作流，直接提出来——好用的工具就是这样一点点磨出来的。
 
-**Q: 连接超时怎么办？**
-运行 `npm run doctor` 诊断环境问题，或检查：
-- 目标主机是否可达（`ping <hostname>`）
-- SSH 端口是否正确（默认 22）
-- 防火墙是否允许出站 SSH 连接
+## 许可证
 
-**Q: 认证失败？**
-- 确认 `IdentityFile` 指向正确的私钥文件
-- 确认私钥文件权限正确（Linux/macOS: `chmod 600`）
-- 如使用密码，确认环境变量 `SSH_PASSWORD_<HOST>` 已设置
-
-**Q: MCP 客户端找不到工具？**
-- 确认 `node dist/index.js --help` 能正常运行
-- 确认 MCP 配置中的路径是绝对路径
-- 重启 MCP 客户端
-
-## 📜 许可证
-
-MIT
+MIT —— 见 [LICENSE](LICENSE)。
