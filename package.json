@@ -1,11 +1,19 @@
 {
   "name": "ssh-mcp-server",
   "version": "1.0.0",
-  "description": "SSH MCP Server - Context-efficient SSH multi-client proxy for Model Context Protocol",
+  "description": "Secure SSH MCP server for Claude Desktop, VS Code Copilot, and MCP clients with pooled connections, OpenSSH config merging, and built-in safety controls",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "ssh-mcp-server": "dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/B143KC47/ssh_mcp.git"
+  },
+  "homepage": "https://github.com/B143KC47/ssh_mcp#readme",
+  "bugs": {
+    "url": "https://github.com/B143KC47/ssh_mcp/issues"
   },
   "scripts": {
     "build": "tsc",
@@ -15,9 +23,19 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
     "ssh",
     "model-context-protocol",
-    "remote-execution"
+    "remote-execution",
+    "ai-agent",
+    "claude-desktop",
+    "github-copilot",
+    "augment",
+    "devops",
+    "automation",
+    "typescript",
+    "ssh2",
+    "security"
   ],
   "license": "MIT",
   "dependencies": {
